@@ -941,6 +941,8 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars }: {
         setUser({ email: 'demo@nextcar.com', uid: 'demo' } as User);
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Credenciales incorrectas. Si eres el dueño, verifica tu email.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Esta cuenta ya existe. Por favor, inicia sesión normalmente.');
       } else {
         setError('Error de acceso. Verifica la configuración de Firebase.');
       }
