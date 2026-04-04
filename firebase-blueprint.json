@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "Car": {
+      "title": "Car",
+      "description": "A vehicle for sale.",
+      "type": "object",
+      "properties": {
+        "brand": { "type": "string", "description": "Car brand (e.g., Toyota)" },
+        "model": { "type": "string", "description": "Car model (e.g., Corolla)" },
+        "year": { "type": "number", "description": "Manufacturing year" },
+        "price": { "type": "number", "description": "Selling price" },
+        "mileage": { "type": "number", "description": "Kilometers driven" },
+        "bodyType": { "type": "string", "description": "Sedan, SUV, etc." },
+        "transmission": { "type": "string", "description": "Manual or Automatic" },
+        "passengers": { "type": "number", "description": "Seating capacity" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "images": { "type": "array", "items": { "type": "string" }, "description": "URLs of car images" },
+        "features": { "type": "array", "items": { "type": "string" }, "description": "Extra equipment" },
+        "highlights": { "type": "array", "items": { "type": "string" }, "description": "What we love about this car" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["brand", "model", "year", "price", "images"]
+    }
+  },
+  "firestore": {
+    "/cars": {
+      "schema": "Car",
+      "description": "Collection of cars for sale."
+    }
+  }
+}

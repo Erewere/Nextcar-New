@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == "luisfj@gmail.com"
+      );
+    }
+
+    function isValidCar(data) {
+      return data.brand is string && data.brand.size() > 0 &&
+             data.model is string && data.model.size() > 0 &&
+             data.year is number && data.year > 1900 &&
+             data.price is number && data.price >= 0 &&
+             data.images is list && data.images.size() > 0;
+    }
+
+    match /cars/{carId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCar(request.resource.data);
+      allow update: if isAuthenticated() && isValidCar(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}
