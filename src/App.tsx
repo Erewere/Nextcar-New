@@ -1322,55 +1322,31 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
     }
     setAiLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Actúa como un experto en autos. Tengo un auto marca "${formData.brand}", modelo "${formData.model}", año ${formData.year}.
-Por favor, devuélveme un objeto JSON con los siguientes datos sobre este auto (si no tienes el dato exacto, da la opción más común para ese modelo y año en México):
-- "bodyType": tipo de carrocería (ej. Sedán, SUV, Hatchback, Pick-up, Coupé).
-- "transmission": tipo de transmisión principal (ej. Automática, Manual o CVT).
-- "engineType": tipo de motor (ej. 4 cilindros 2.0L o V6 3.5L).
-- "horsepower": caballos de fuerza aproximados (ej. 150 hp).
-- "fuelConsumption": consumo de gasolina promedio combinado (ej. 15 km/l).
-- "highlights": 4 características breves o puntos fuertes del auto que enamoren al comprador (string separado por comas).
-- "features": 6-8 elementos de equipamiento destacados (string separado por comas, ej: Apple CarPlay, Cámara de reversa, Quemacocos).
-- "description": un párrafo persuasivo de descripción del vehículo, resaltando sus características, si es ideal para la familia, qué situaciones o necesidades resuelve y qué lo hace especial.
-No incluyas markdown, solo un JSON object.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              bodyType: { type: Type.STRING },
-              transmission: { type: Type.STRING },
-              engineType: { type: Type.STRING },
-              horsepower: { type: Type.STRING },
-              fuelConsumption: { type: Type.STRING },
-              highlights: { type: Type.STRING },
-              features: { type: Type.STRING },
-              description: { type: Type.STRING }
-            },
-            required: ["bodyType", "transmission", "engineType", "horsepower", "fuelConsumption", "highlights", "features", "description"]
-          }
-        }
+      const resp = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand: formData.brand,
+          model: formData.model,
+          year: formData.year
+        })
       });
-
-      if (response.text) {
-        const data = JSON.parse(response.text);
-        setFormData(prev => ({
-          ...prev,
-          bodyType: data.bodyType || prev.bodyType,
-          transmission: data.transmission || prev.transmission,
-          engineType: data.engineType || prev.engineType,
-          horsepower: data.horsepower || prev.horsepower,
-          fuelConsumption: data.fuelConsumption || prev.fuelConsumption,
-          highlights: data.highlights || prev.highlights,
-          features: data.features || prev.features,
-          description: data.description || prev.description,
-        }));
+      if (!resp.ok) {
+        throw new Error('API error');
       }
+      const data = await resp.json();
+
+      setFormData(prev => ({
+        ...prev,
+        bodyType: data.bodyType || prev.bodyType,
+        transmission: data.transmission || prev.transmission,
+        engineType: data.engineType || prev.engineType,
+        horsepower: data.horsepower || prev.horsepower,
+        fuelConsumption: data.fuelConsumption || prev.fuelConsumption,
+        highlights: data.highlights || prev.highlights,
+        features: data.features || prev.features,
+        description: data.description || prev.description,
+      }));
     } catch (error) {
       console.error(error);
       alert("Hubo un error al autocompletar con IA.");
@@ -1623,10 +1599,21 @@ No incluyas markdown, solo un JSON object.`;
       }
 
       cancelEditing();
-    } catch (err) {
-      handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.WRITE, editingId ? `cars/${editingId}` : 'cars');
+    } catch (err: any) {
+      console.error(err);
+      try {
+        handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.WRITE, editingId ? `cars/${editingId}` : 'cars');
+      } catch (e: any) {
+        try {
+          const parsed = JSON.parse(e.message);
+          alert('Error al guardar el auto: ' + parsed.error);
+        } catch (_) {
+          alert('Error al guardar el auto: ' + (e.message || err.message || err));
+        }
+      }
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   if (initialLoad) {
