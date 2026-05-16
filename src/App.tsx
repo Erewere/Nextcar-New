@@ -1477,11 +1477,21 @@ No incluyas markdown, solo un JSON object.`;
     try {
       let result;
       if (forceRegister) {
-        result = await createUserWithEmailAndPassword(auth, email, password);
-        alert('Cuenta de Administrador Maestro creada con éxito.');
+        try {
+          result = await createUserWithEmailAndPassword(auth, email, password);
+          alert('Cuenta de Administrador Maestro creada con éxito.');
+        } catch (createErr: any) {
+          if (createErr.code === 'auth/email-already-in-use') {
+             // Try logging in instead if the account exists
+             result = await signInWithEmailAndPassword(auth, email, password);
+          } else {
+             throw createErr;
+          }
+        }
       } else {
         result = await signInWithEmailAndPassword(auth, email, password);
       }
+      
       if (result.user.email?.toLowerCase().trim() !== 'luisfj@gmail.com') {
         await signOut(auth);
         setError('Acceso denegado. Solo el administrador (luisfj@gmail.com) puede iniciar sesión.');
@@ -1490,12 +1500,10 @@ No incluyas markdown, solo un JSON object.`;
       console.error(err);
       if (err.code === 'auth/operation-not-allowed') {
         setError('El inicio de sesión con correo y contraseña no está habilitado en Firebase. Por favor habilítalo en la consola de Firebase en Autenticación > Sign-in method.');
-        // setIsDemoMode(true);
-        // setUser({ email: 'demo@nextcar.com', uid: 'demo' } as User);
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('Credenciales incorrectas. Si eres el dueño, verifica tu email.');
+        setError('Credenciales incorrectas o cuenta creada con Google. Verifica tu contraseña o usa "Continuar con Google".');
       } else if (err.code === 'auth/email-already-in-use') {
-        setError('Esta cuenta ya existe. Por favor, inicia sesión normalmente.');
+        setError('Esta cuenta ya existe. Por favor, inicia sesión normalmente o usa Google.');
       } else {
         setError(err.message || 'Error de acceso. Verifica la configuración de Firebase.');
       }
