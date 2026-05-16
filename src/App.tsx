@@ -1526,7 +1526,7 @@ No incluyas markdown, solo un JSON object.`;
       if (err.code === 'auth/operation-not-allowed') {
         setError('El inicio de sesión con Google no está habilitado en Firebase. Por favor, actívalo en tu consola de Firebase.');
       } else {
-        setError('Ocurrió un error al iniciar sesión con Google.');
+        setError(`Ocurrió un error al iniciar sesión con Google: ${err.message}`);
       }
     }
     setLoading(false);
