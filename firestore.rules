@@ -32,5 +32,15 @@ service cloud.firestore {
       allow read: if isAuthenticated() && request.auth.uid == userId;
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /leads/{leadId} {
+      allow read: if isAdmin();
+      allow create: if true; // anyone can create a lead
+      allow update, delete: if isAdmin();
+    }
   }
 }
