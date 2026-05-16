@@ -1287,6 +1287,20 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && currentUser.email?.toLowerCase().trim() === 'luisfj@gmail.com') {
+        setUser(currentUser);
+        setIsDemoMode(false);
+      } else {
+        setUser(null);
+      }
+      setInitialLoad(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1461,11 +1475,16 @@ No incluyas markdown, solo un JSON object.`;
     setLoading(true);
     setError('');
     try {
+      let result;
       if (forceRegister) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        result = await createUserWithEmailAndPassword(auth, email, password);
         alert('Cuenta de Administrador Maestro creada con éxito.');
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        result = await signInWithEmailAndPassword(auth, email, password);
+      }
+      if (result.user.email?.toLowerCase().trim() !== 'luisfj@gmail.com') {
+        await signOut(auth);
+        setError('Acceso denegado. Solo el administrador (luisfj@gmail.com) puede iniciar sesión.');
       }
     } catch (err: any) {
       console.error(err);
@@ -1489,14 +1508,15 @@ No incluyas markdown, solo un JSON object.`;
     setError('');
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      if (result.user.email?.toLowerCase().trim() !== 'luisfj@gmail.com') {
+        await signOut(auth);
+        setError('Acceso denegado. Solo el administrador (luisfj@gmail.com) puede iniciar sesión.');
+      }
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/operation-not-allowed') {
         setError('El inicio de sesión con Google no está habilitado en Firebase. Por favor, actívalo en tu consola de Firebase.');
-        // Optionally enter demo mode
-        // setIsDemoMode(true);
-        // setUser({ email: 'demo@nextcar.com', uid: 'demo' } as User);
       } else {
         setError('Ocurrió un error al iniciar sesión con Google.');
       }
@@ -1613,7 +1633,15 @@ No incluyas markdown, solo un JSON object.`;
     setUploading(false);
   };
 
-  if (!user) {
+  if (initialLoad) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#e11d48]"></div>
+      </div>
+    );
+  }
+
+  if (!user && !isDemoMode) {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 bg-gray-50">
         <FadeIn className="bg-white p-10 rounded-3xl shadow-xl w-full max-w-md border border-gray-100">
@@ -1623,6 +1651,42 @@ No incluyas markdown, solo un JSON object.`;
           <div className="space-y-4">
             {error && <p className="text-red-500 text-xs font-bold bg-red-50 p-3 rounded-lg">{error}</p>}
             
+            <form onSubmit={(e) => handleAuth(e, false)} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-black mb-2 block">Email</label>
+                <input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="w-full bg-white border-2 border-black p-4 focus:ring-0 focus:outline-none focus:border-[#e11d48] transition-all font-bold" 
+                  placeholder="admin@nextcar.com" 
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-black mb-2 block">Contraseña</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="w-full bg-white border-2 border-black p-4 focus:ring-0 focus:outline-none focus:border-[#e11d48] transition-all font-bold" 
+                  placeholder="••••••••" 
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-black text-white font-bold uppercase tracking-widest text-sm py-4 border-4 border-black hover:bg-transparent hover:text-black transition-all"
+              >
+                {loading ? 'Cargando...' : 'Iniciar Sesión'}
+              </button>
+            </form>
+
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-400 font-bold">O usa Google</span></div>
+            </div>
+
             <button 
               type="button"
               onClick={handleGoogleAuth}
@@ -1638,21 +1702,15 @@ No incluyas markdown, solo un JSON object.`;
               Continuar con Google
             </button>
 
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-400 font-bold">O prueba el sistema</span></div>
-            </div>
-
             <button 
-              type="button"
-              onClick={() => {
-                setIsDemoMode(true);
-                setUser({ email: 'demo@nextcar.com', uid: 'demo' } as User);
-              }}
-              className="w-full bg-white text-black border border-gray-200 py-4 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+              type="button" 
+              onClick={(e) => handleAuth(e as any, true)} 
+              disabled={loading}
+              className="w-full text-center text-xs text-black font-bold uppercase tracking-widest underline decoration-2 underline-offset-4 pt-2"
             >
-              Entrar en Modo Demo
+              Crear cuenta de Administrador
             </button>
+
           </div>
         </FadeIn>
       </div>
