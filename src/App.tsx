@@ -1635,7 +1635,11 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
         
         Object.keys(formData).forEach(key => {
           const val = (formData as any)[key];
-          formDataPayload.append(key, val);
+          if (key === 'make') {
+            formDataPayload.append('brand', val);
+          } else {
+            formDataPayload.append(key, val);
+          }
         });
 
         // Add existing images to keep
@@ -1654,12 +1658,12 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
           body: formDataPayload
         });
 
+        const rawText = await resp.text();
         let resultData;
         try {
-          resultData = await resp.json();
+          resultData = JSON.parse(rawText);
         } catch (e) {
-          const text = await resp.text();
-          throw new Error('Respuesta no válida del servidor: ' + text.substring(0, 100));
+          throw new Error('Respuesta no válida del servidor: ' + rawText.substring(0, 200));
         }
 
         if (!resp.ok) {

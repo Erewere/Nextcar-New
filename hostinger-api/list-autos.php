@@ -25,6 +25,8 @@ if ($result && $result->num_rows > 0) {
         
         $row['images'] = $images;
         
+        $row['make'] = $row['brand'];
+
         // Convert comma-separated strings back to arrays
         $row['features'] = !empty($row['features']) ? explode(',', $row['features']) : [];
         $row['highlights'] = !empty($row['highlights']) ? explode(',', $row['highlights']) : [];
