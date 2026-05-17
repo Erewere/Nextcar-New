@@ -59,6 +59,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { auth, db, storage, handleFirestoreError, OperationType } from './firebase';
 import { cn } from './lib/utils';
 
+const IMAGE_BASE_URL = (process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api') + '/uploads/autos/';
+
 // --- Error Boundary ---
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -556,7 +558,7 @@ const Home = ({ cars, pageSettings }: { cars: CarData[], pageSettings: any }) =>
               <div className="group block h-full flex flex-col bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-2 transition-all overflow-hidden relative">
                 <div className="aspect-[4/3] bg-gray-100 overflow-hidden relative border-b-4 border-black">
                   <img 
-                    src={car.images[0]} 
+                    src={car.images[0]?.startsWith('http') ? car.images[0] : IMAGE_BASE_URL + car.images[0]} 
                     alt={car.model} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -710,7 +712,7 @@ const Catalog = ({ cars, loading }: { cars: CarData[], loading: boolean }) => {
                 <FadeIn key={car.id} delay={idx * 0.05}>
                   <Link to={`/auto/${car.id}`} className="group block">
                     <ParallaxImage 
-                      src={car.images[0]} 
+                      src={car.images[0]?.startsWith('http') ? car.images[0] : IMAGE_BASE_URL + car.images[0]} 
                       alt={car.model} 
                       className="aspect-[4/5] bg-gray-100 mb-6 border-4 border-black"
                     />
@@ -920,7 +922,7 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
                 initial={{ scale: 1.1 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 1 }}
-                src={car.images[activeImage]} 
+                src={car.images[activeImage]?.startsWith('http') ? car.images[activeImage] : IMAGE_BASE_URL + car.images[activeImage]} 
                 alt={car.model} 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -957,7 +959,7 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
                     activeImage === idx ? "border-[#e11d48] shadow-[4px_4px_0px_0px_rgba(225,29,72,1)]" : "border-black opacity-60 hover:opacity-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                   )}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={img?.startsWith('http') ? img : IMAGE_BASE_URL + img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </button>
               ))}
             </div>
@@ -2052,7 +2054,7 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
                     car.status === 'sold' && "opacity-80 border-gray-400 shadow-[4px_4px_0px_0px_rgba(156,163,175,1)]"
                   )}>
                     <div className="w-24 h-24 border-2 border-black overflow-hidden bg-gray-100 shrink-0 relative">
-                      <img src={car.images[0]} alt="" className="w-full h-full object-cover" />
+                      <img src={car.images[0]?.startsWith('http') ? car.images[0] : IMAGE_BASE_URL + car.images[0]} alt="" className="w-full h-full object-cover" />
                       {car.status === 'sold' && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                           <span className="text-white text-[10px] font-bold uppercase tracking-widest bg-red-500 px-2 py-1 rotate-[-5deg] border-2 border-black">Vendido</span>
