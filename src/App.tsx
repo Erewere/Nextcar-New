@@ -765,22 +765,25 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
       setCar(found);
       setLoading(false);
     } else {
-      const fetchCar = async () => {
+      const fetchCarFromLocal = async () => {
         try {
-          const resp = await fetch(`/api/get-auto?id=${id}`);
+          const resp = await fetch('/autos.json');
           if (resp.ok) {
             const result = await resp.json();
             if (result.success) {
-              setCar(result.data);
+              const carFromLocal = result.data.find((c: any) => String(c.id) === id);
+              if (carFromLocal) {
+                setCar(carFromLocal);
+              }
             }
           }
           setLoading(false);
         } catch (error) {
-          console.error("Error fetching car:", error);
+          console.error("Error loading car from local data:", error);
           setLoading(false);
         }
       };
-      fetchCar();
+      fetchCarFromLocal();
     }
   }, [id, allCars]);
 
@@ -2307,7 +2310,7 @@ export default function App() {
 
   const fetchCars = async () => {
     try {
-      const resp = await fetch('/api/list-autos');
+      const resp = await fetch('/autos.json');
       if (resp.ok) {
         const result = await resp.json();
         if (result.success) {
