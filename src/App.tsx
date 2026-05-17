@@ -58,6 +58,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage, handleFirestoreError, OperationType } from './firebase';
 import { cn } from './lib/utils';
+import autosData from '../public/autos.json';
 
 const IMAGE_BASE_URL = (process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api') + '/uploads/autos/';
 
@@ -765,25 +766,14 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
       setCar(found);
       setLoading(false);
     } else {
-      const fetchCarFromLocal = async () => {
-        try {
-          const resp = await fetch('/autos.json');
-          if (resp.ok) {
-            const result = await resp.json();
-            if (result.success) {
-              const carFromLocal = result.data.find((c: any) => String(c.id) === id);
-              if (carFromLocal) {
-                setCar(carFromLocal);
-              }
-            }
-          }
-          setLoading(false);
-        } catch (error) {
-          console.error("Error loading car from local data:", error);
-          setLoading(false);
-        }
-      };
-      fetchCarFromLocal();
+    const fetchCarFromStatic = () => {
+      const carFromLocal = autosData.data.find((c: any) => String(c.id) === id);
+      if (carFromLocal) {
+        setCar(carFromLocal);
+      }
+      setLoading(false);
+    };
+    fetchCarFromStatic();
     }
   }, [id, allCars]);
 
@@ -2304,24 +2294,13 @@ const defaultSettings = {
 };
 
 export default function App() {
-  const [firestoreCars, setFirestoreCars] = useState<CarData[]>([]);
+  const [firestoreCars, setFirestoreCars] = useState<CarData[]>(autosData.data);
   const rawBase = process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api/';
   const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
   const fetchCars = async () => {
-    try {
-      const resp = await fetch('/autos.json');
-      if (resp.ok) {
-        const result = await resp.json();
-        if (result.success) {
-          setFirestoreCars(result.data);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching cars:", err);
-    } finally {
-      setLoading(false);
-    }
+    // Data is already loaded via static import
+    setLoading(false);
   };
   const [demoCars, setDemoCars] = useState<CarData[]>([]);
   const [loading, setLoading] = useState(true);

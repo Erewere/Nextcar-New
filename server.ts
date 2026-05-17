@@ -150,6 +150,15 @@ No incluyas markdown, solo un JSON object.`;
     }
   });
 
+  // Serve static files from public and dist
+  app.use(express.static(path.join(process.cwd(), 'public')));
+  app.use(express.static(path.join(process.cwd(), 'dist')));
+
+  // Explicit route for autos.json to ensure it is served correctly
+  app.get('/autos.json', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'autos.json'));
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -159,7 +168,6 @@ No incluyas markdown, solo un JSON object.`;
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
