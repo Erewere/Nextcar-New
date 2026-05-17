@@ -754,12 +754,33 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
 
   useEffect(() => {
     if (!id) return;
-    const found = allCars.find(c => c.id === id);
+    const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
+    
+    // Support both string and number IDs (MySQL uses numbers, Firestore uses strings)
+    const found = allCars.find(c => String(c.id) === id);
     if (found) {
       setCar(found);
       setLoading(false);
-    } else {
+    } else if (apiBaseUrl) {
       const fetchCar = async () => {
+        try {
+          const resp = await fetch(`${apiBaseUrl}get-auto.php?id=${id}`);
+          if (resp.ok) {
+            const result = await resp.json();
+            if (result.success) {
+              setCar(result.data);
+            }
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error("Error fetching car from Hostinger:", error);
+          setLoading(false);
+        }
+      };
+      fetchCar();
+    } else {
+      // Fallback to Firestore OR demo data only if Hostinger API is NOT configured
+      const fetchCarFromFirestore = async () => {
         const path = `cars/${id}`;
         try {
           const docRef = doc(db, 'cars', id);
@@ -1273,13 +1294,15 @@ const Consignacion = ({ pageSettings }: { pageSettings?: any }) => {
   );
 };
 
-const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }: { 
+const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, fetchCars }: { 
   onCarAdded: (car: CarData) => void,
   onCarUpdated: (car: CarData) => void,
   onCarDeleted: (id: string) => void,
   allCars: CarData[],
-  pageSettings: any
+  pageSettings: any,
+  fetchCars: () => Promise<void>
 }) => {
+  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1405,15 +1428,24 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
       if (isDemoMode || car.id?.startsWith('demo-') || car.id?.startsWith('seed-')) {
         onCarDeleted(car.id!);
         alert('Auto eliminado localmente');
+      } else if (apiBaseUrl) {
+        const resp = await fetch(`${apiBaseUrl}delete-auto.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: car.id })
+        });
+        const result = await resp.json();
+        if (result.success) {
+          alert('Auto eliminado con éxito');
+          fetchCars();
+        } else {
+          throw new Error(result.message || 'Error al eliminar en Hostinger');
+        }
       } else {
         await deleteDoc(doc(db, 'cars', car.id!));
       }
     } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.DELETE, `cars/${car.id}`);
-      } catch (e: any) {
-        alert("Error: " + e.message);
-      }
+      alert("Error: " + (err as any).message);
     }
   };
 
@@ -1423,15 +1455,44 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
       if (isDemoMode || car.id?.startsWith('demo-') || car.id?.startsWith('seed-')) {
         onCarUpdated({...car, status: newStatus});
         alert(`Auto marcado como ${newStatus === 'sold' ? 'Vendido' : 'Disponible'} localmente`);
+      } else if (apiBaseUrl) {
+        const formDataPayload = new FormData();
+        formDataPayload.append('id', car.id!);
+        formDataPayload.append('status', newStatus);
+        
+        // We need to send all other fields too because update-auto.php expects them (naive implementation)
+        // Or we could modify update-auto.php to be partial. 
+        // For now let's just send the status update to update-auto.php
+        // Actually, update-auto.php as written requires many fields. 
+        // I'll use a simpler fetch for status if possible, or just build the full formData.
+        
+        Object.keys(car).forEach(key => {
+          if (key === 'status') {
+            formDataPayload.append(key, newStatus);
+          } else if (key === 'images' || key === 'highlights' || key === 'features') {
+            const val = (car as any)[key];
+            formDataPayload.append(key === 'images' ? 'keep_images[]' : key, Array.isArray(val) ? val.join(',') : val);
+          } else if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
+            formDataPayload.append(key, String((car as any)[key]));
+          }
+        });
+
+        const resp = await fetch(`${apiBaseUrl}update-auto.php`, {
+          method: 'POST',
+          body: formDataPayload
+        });
+        const result = await resp.json();
+        if (result.success) {
+          alert(`Auto marcado como ${newStatus === 'sold' ? 'Vendido' : 'Disponible'}`);
+          fetchCars();
+        } else {
+          throw new Error(result.message || 'Error al actualizar estado');
+        }
       } else {
         await updateDoc(doc(db, 'cars', car.id!), { status: newStatus });
       }
     } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.UPDATE, `cars/${car.id}`);
-      } catch (e: any) {
-        alert("Error: " + e.message);
-      }
+      alert("Error: " + (err as any).message);
     }
   };
 
@@ -1565,37 +1626,46 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
           onCarAdded(carData);
           alert('MODO DEMO: Auto publicado localmente');
         }
-      } else {
-        const imageUrls = [...existingImages];
-        for (const file of selectedFiles) {
-          const storageRef = ref(storage, `cars/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(storageRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          imageUrls.push(url);
+      } else if (apiBaseUrl) {
+        // Hostinger submission
+        const formDataPayload = new FormData();
+        if (editingId) formDataPayload.append('id', editingId);
+        
+        Object.keys(formData).forEach(key => {
+          const val = (formData as any)[key];
+          formDataPayload.append(key, val);
+        });
+
+        // Add existing images to keep
+        existingImages.forEach(img => {
+          formDataPayload.append('keep_images[]', img);
+        });
+
+        // Add new files
+        selectedFiles.forEach(file => {
+          formDataPayload.append('images[]', file);
+        });
+
+        const endpoint = editingId ? 'update-auto.php' : 'upload.php';
+        const resp = await fetch(`${apiBaseUrl}${endpoint}`, {
+          method: 'POST',
+          body: formDataPayload
+        });
+
+        if (!resp.ok) {
+          const errorData = await resp.json();
+          throw new Error(errorData.message || 'Error en el servidor Hostinger');
         }
 
-        const carPayload = {
-          ...formData,
-          price: Number(formData.price),
-          year: Number(formData.year),
-          mileage: Number(formData.mileage),
-          passengers: Number(formData.passengers),
-          images: imageUrls,
-          highlights: formData.highlights.split(',').map(s => s.trim()).filter(s => s !== ''),
-          features: formData.features.split(',').map(s => s.trim()).filter(s => s !== ''),
-          updatedAt: serverTimestamp()
-        };
-
-        if (editingId) {
-          await updateDoc(doc(db, 'cars', editingId), carPayload);
-          alert('Auto actualizado con éxito');
+        const resultData = await resp.json();
+        if (resultData.success) {
+          alert(editingId ? 'Auto actualizado con éxito' : 'Auto publicado con éxito');
+          fetchCars();
         } else {
-          await addDoc(collection(db, 'cars'), {
-            ...carPayload,
-            createdAt: serverTimestamp()
-          });
-          alert('Auto publicado con éxito');
+          throw new Error(resultData.message || 'Error al guardar en Hostinger');
         }
+      } else {
+        alert('Configuración de API no encontrada. No se puede guardar en Firestore por seguridad de migración.');
       }
 
       cancelEditing();
@@ -1732,7 +1802,21 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings }
                 <div className="space-y-6">
                   <FadeIn>
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-3xl font-display font-black uppercase tracking-tighter">{editingId ? 'Editar Unidad' : 'Nueva Unidad'}</h3>
+                      <div>
+                        <h3 className="text-3xl font-display font-black uppercase tracking-tighter">{editingId ? 'Editar Unidad' : 'Nueva Unidad'}</h3>
+                        <div className="mt-2 flex gap-2">
+                          {!apiBaseUrl && !isDemoMode && (
+                            <span className="text-[9px] font-bold bg-yellow-400 px-2 py-0.5 border-2 border-black uppercase">
+                              Modo Firebase
+                            </span>
+                          )}
+                          {apiBaseUrl && (
+                            <span className="text-[9px] font-bold bg-green-400 px-2 py-0.5 border-2 border-black uppercase">
+                              Hostinger API
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <button 
                         type="button" 
                         onClick={handleAutoFillWithAI}
@@ -2193,6 +2277,24 @@ const defaultSettings = {
 
 export default function App() {
   const [firestoreCars, setFirestoreCars] = useState<CarData[]>([]);
+  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
+
+  const fetchCars = async () => {
+    if (!apiBaseUrl) return;
+    try {
+      const resp = await fetch(`${apiBaseUrl}list-autos.php`);
+      if (resp.ok) {
+        const result = await resp.json();
+        if (result.success) {
+          setFirestoreCars(result.data);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching cars from Hostinger:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [demoCars, setDemoCars] = useState<CarData[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageSettings, setPageSettings] = useState(defaultSettings);
@@ -2226,21 +2328,32 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sync Firestore
+  // Sync with Hostinger/Firebase
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'cars'), (snapshot) => {
-      const cars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CarData));
-      setFirestoreCars(cars);
-      setLoading(false);
-    }, (error) => {
-      console.warn("Firestore access restricted or not ready. Using local data.");
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (apiBaseUrl) {
+      fetchCars();
+      // Optional: Polling every 30 seconds for "real-time" feel
+      const interval = setInterval(fetchCars, 30000);
+      return () => clearInterval(interval);
+    } else {
+      const unsubscribe = onSnapshot(collection(db, 'cars'), (snapshot) => {
+        const cars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CarData));
+        setFirestoreCars(cars);
+        setLoading(false);
+      }, (error) => {
+        console.warn("Firestore access restricted or not ready. Using local data.");
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    }
+  }, [apiBaseUrl]);
 
-  // Merge Data: Firestore + Demo + Seed (if empty)
+  // Merge Data: Final logic for display
   const allCars = useMemo(() => {
+    // CRITICAL: If Hostinger is active, ONLY use its data
+    // This disables demo and seed data when the API URL is present
+    if (apiBaseUrl) return firestoreCars;
+    
     const validDemo = demoCars.filter((c: any) => c.status !== 'deleted');
     const uniqueMap = new Map();
     // First take firestore cars
@@ -2252,7 +2365,7 @@ export default function App() {
     
     let combined = Array.from(uniqueMap.values());
     
-    // If we rely on seed cars, we should also include seed cars that aren't overridden in demoCars
+    // Fallback to seed cars ONLY if no firestore cars exist and not in Hostinger mode
     if (firestoreCars.length === 0) {
       const demoIds = new Set(demoCars.map((c: any) => c.id));
       const remainingSeeds = seedCars.map((c, i) => ({ ...c, id: `seed-${i}` })).filter(c => !demoIds.has(c.id));
@@ -2260,11 +2373,12 @@ export default function App() {
     }
     
     return combined;
-  }, [firestoreCars, demoCars]);
+  }, [firestoreCars, demoCars, apiBaseUrl]);
 
-  // Seed Logic (Attempt only)
+  // Seed Logic: Only trigger if NOT using Hostinger
   useEffect(() => {
     const checkAndSeed = async () => {
+      if (apiBaseUrl) return; // PROHIBIT seeding in Hostinger mode
       try {
         const snapshot = await getDocs(collection(db, 'cars'));
         if (snapshot.empty && auth.currentUser) {
@@ -2275,7 +2389,7 @@ export default function App() {
       } catch (e) { /* Ignore */ }
     };
     checkAndSeed();
-  }, []);
+  }, [apiBaseUrl, auth.currentUser]);
 
   return (
     <ErrorBoundary>
@@ -2293,6 +2407,7 @@ export default function App() {
               <Route path="/admin" element={<Admin 
                 allCars={allCars}
                 pageSettings={pageSettings}
+                fetchCars={fetchCars}
                 onCarAdded={(newCar: CarData) => {
                   const updated = [newCar, ...demoCars];
                   setDemoCars(updated);
