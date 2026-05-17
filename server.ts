@@ -2,12 +2,108 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import mysql from "mysql2/promise";
+
+let pool: any;
+
+function getPool() {
+  if (!pool) {
+    const config = {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 5000 // Add a timeout
+    };
+    
+    if (!config.host || !config.user || !config.database) {
+      const missing = [];
+      if (!config.host) missing.push("DB_HOST");
+      if (!config.user) missing.push("DB_USER");
+      if (!config.database) missing.push("DB_NAME");
+      throw new Error(`Faltan variables de entorno para la base de datos: ${missing.join(", ")}. Por favor configúralas en el menú Settings.`);
+    }
+    
+    pool = mysql.createPool(config);
+  }
+  return pool;
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // API route for listing autos from MySQL
+  app.get("/api/list-autos", async (req, res) => {
+    try {
+      const db = getPool();
+      const [rows]: any = await db.execute("SELECT * FROM autos WHERE activo = 1 ORDER BY id DESC");
+      
+      const cars = rows.map((row: any) => ({
+        id: String(row.id),
+        brand: row.marca || "",
+        model: row.modelo || "",
+        year: Number(row.año) || 2024,
+        price: Number(row.precio) || 0,
+        mileage: Number(row.kilometraje) || 0,
+        bodyType: row.carroceria || "Sedán",
+        transmission: row.transmision || "Automática",
+        description: row.descripcion || "",
+        images: row.imagen_principal ? [row.imagen_principal] : [],
+        passengers: 5,
+        features: [],
+        highlights: [],
+        status: row.activo ? 'available' : 'sold'
+      }));
+
+      res.json({ success: true, data: cars });
+    } catch (error: any) {
+      console.error("DB Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.get("/api/get-auto", async (req, res) => {
+    try {
+      const { id } = req.query;
+      if (!id) return res.status(400).json({ success: false, message: "ID is required" });
+
+      const db = getPool();
+      const [rows]: any = await db.execute("SELECT * FROM autos WHERE id = ?", [id]);
+      
+      if (rows.length === 0) {
+        return res.status(404).json({ success: false, message: "Car not found" });
+      }
+
+      const row = rows[0];
+      const car = {
+        id: String(row.id),
+        brand: row.marca || "",
+        model: row.modelo || "",
+        year: Number(row.año) || 2024,
+        price: Number(row.precio) || 0,
+        mileage: Number(row.kilometraje) || 0,
+        bodyType: row.carroceria || "Sedán",
+        transmission: row.transmision || "Automática",
+        description: row.descripcion || "",
+        images: row.imagen_principal ? [row.imagen_principal] : [],
+        passengers: 5,
+        features: [],
+        highlights: [],
+        status: row.activo ? 'available' : 'sold'
+      };
+
+      res.json({ success: true, data: car });
+    } catch (error: any) {
+      console.error("DB Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
 
   // API route for Gemini
   app.post("/api/gemini", async (req, res) => {

@@ -764,10 +764,10 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
     if (found) {
       setCar(found);
       setLoading(false);
-    } else if (apiBaseUrl) {
+    } else {
       const fetchCar = async () => {
         try {
-          const resp = await fetch(`${apiBaseUrl}get-auto.php?id=${id}`);
+          const resp = await fetch(`/api/get-auto?id=${id}`);
           if (resp.ok) {
             const result = await resp.json();
             if (result.success) {
@@ -776,24 +776,8 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
           }
           setLoading(false);
         } catch (error) {
-          console.error("Error fetching car from Hostinger:", error);
+          console.error("Error fetching car:", error);
           setLoading(false);
-        }
-      };
-      fetchCar();
-    } else {
-      // Fallback to Firestore OR demo data only if Hostinger API is NOT configured
-      const fetchCarFromFirestore = async () => {
-        const path = `cars/${id}`;
-        try {
-          const docRef = doc(db, 'cars', id);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setCar({ id: docSnap.id, ...docSnap.data() } as CarData);
-          }
-          setLoading(false);
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, path);
         }
       };
       fetchCar();
@@ -2322,9 +2306,8 @@ export default function App() {
   const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
   const fetchCars = async () => {
-    if (!apiBaseUrl) return;
     try {
-      const resp = await fetch(`${apiBaseUrl}list-autos.php`);
+      const resp = await fetch('/api/list-autos');
       if (resp.ok) {
         const result = await resp.json();
         if (result.success) {
@@ -2332,7 +2315,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.error("Error fetching cars from Hostinger:", err);
+      console.error("Error fetching cars:", err);
     } finally {
       setLoading(false);
     }
