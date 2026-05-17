@@ -754,7 +754,7 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
 
   useEffect(() => {
     if (!id) return;
-    const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
+    const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
     
     // Support both string and number IDs (MySQL uses numbers, Firestore uses strings)
     const found = allCars.find(c => String(c.id) === id);
@@ -1302,7 +1302,7 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
   pageSettings: any,
   fetchCars: () => Promise<void>
 }) => {
-  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
+  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -2283,7 +2283,7 @@ const defaultSettings = {
 
 export default function App() {
   const [firestoreCars, setFirestoreCars] = useState<CarData[]>([]);
-  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || '';
+  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
 
   const fetchCars = async () => {
     if (!apiBaseUrl) return;
