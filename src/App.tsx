@@ -1652,12 +1652,18 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
           body: formDataPayload
         });
 
-        if (!resp.ok) {
-          const errorData = await resp.json();
-          throw new Error(errorData.message || 'Error en el servidor Hostinger');
+        let resultData;
+        try {
+          resultData = await resp.json();
+        } catch (e) {
+          const text = await resp.text();
+          throw new Error('Respuesta no válida del servidor: ' + text.substring(0, 100));
         }
 
-        const resultData = await resp.json();
+        if (!resp.ok) {
+          throw new Error(resultData.message || 'Error en el servidor Hostinger');
+        }
+
         if (resultData.success) {
           alert(editingId ? 'Auto actualizado con éxito' : 'Auto publicado con éxito');
           fetchCars();

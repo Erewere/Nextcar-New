@@ -1,19 +1,10 @@
 <?php
 // hostinger-api/config.php
+error_reporting(0);
+ini_set('display_errors', 0);
 
-// CORS Configuration - ONLY ALLOW YOUR DOMAINS
-$allowed_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://yourdomain.com", // Replace with your actual domain
-    "https://ais-dev-loqdmqkye4utksjuxsc57k-171595729037.us-west2.run.app" // App preview
-];
-
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowed_origins)) {
-    header("Access-Control-Allow-Origin: $origin");
-}
-
+// CORS Configuration
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=utf-8");
@@ -54,8 +45,15 @@ function validateImage($file) {
         return "El archivo " . $file['name'] . " es demasiado grande (Máx 5MB).";
     }
     
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime = $finfo->file($file['tmp_name']);
+    if (class_exists('finfo')) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+    } elseif (function_exists('mime_content_type')) {
+        $mime = mime_content_type($file['tmp_name']);
+    } else {
+        $info = getimagesize($file['tmp_name']);
+        $mime = $info ? $info['mime'] : '';
+    }
     
     if (!in_array($mime, $allowed_types)) {
         return "El archivo " . $file['name'] . " no es un tipo de imagen permitido (JPG, PNG, WEBP).";
