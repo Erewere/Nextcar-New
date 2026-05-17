@@ -754,7 +754,8 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
 
   useEffect(() => {
     if (!id) return;
-    const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+    const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+    const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
     
     // Support both string and number IDs (MySQL uses numbers, Firestore uses strings)
     const found = allCars.find(c => String(c.id) === id);
@@ -1302,7 +1303,8 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
   pageSettings: any,
   fetchCars: () => Promise<void>
 }) => {
-  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1702,16 +1704,16 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
       }
 
       cancelEditing();
-    } catch (err: any) {
+      } catch (err: any) {
       console.error(err);
       try {
         handleFirestoreError(err, editingId ? OperationType.UPDATE : OperationType.WRITE, editingId ? `cars/${editingId}` : 'cars');
       } catch (e: any) {
         try {
           const parsed = JSON.parse(e.message);
-          alert('Error al guardar el auto: ' + parsed.error);
+          alert(`Error al guardar el auto: ${parsed.error} (URL: ${apiBaseUrl})`);
         } catch (_) {
-          alert('Error al guardar el auto: ' + (e.message || err.message || err));
+          alert(`Error al guardar el auto: ${(e.message || err.message || err)} (URL: ${apiBaseUrl})`);
         }
       }
     } finally {
@@ -2310,7 +2312,8 @@ const defaultSettings = {
 
 export default function App() {
   const [firestoreCars, setFirestoreCars] = useState<CarData[]>([]);
-  const apiBaseUrl = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
   const fetchCars = async () => {
     if (!apiBaseUrl) return;

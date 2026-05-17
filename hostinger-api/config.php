@@ -29,7 +29,10 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // Configuration for Uploads
-$base_url = "https://" . $_SERVER['HTTP_HOST'] . "/api/uploads/autos/";
+// Auto-detect the base URL path based on where this script is located
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$dir_path = dirname($_SERVER['SCRIPT_NAME']); // e.g. /hostinger-api
+$base_url = $protocol . "://" . $_SERVER['HTTP_HOST'] . rtrim($dir_path, '/') . "/uploads/autos/";
 $upload_dir = __DIR__ . "/uploads/autos/";
 
 if (!file_exists($upload_dir)) {
