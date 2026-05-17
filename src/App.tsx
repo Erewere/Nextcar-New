@@ -1671,7 +1671,34 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
           throw new Error(resultData.message || 'Error al guardar en Hostinger');
         }
       } else {
-        alert('Configuración de API no encontrada. No se puede guardar en Firestore por seguridad de migración.');
+        // Fallback a Firestore si Hostinger no está configurado
+        const imageUrls = [...existingImages];
+        for (const file of selectedFiles) {
+          const storageRef = ref(storage, `cars/${Date.now()}_${file.name}`);
+          await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(storageRef);
+          imageUrls.push(url);
+        }
+
+        const carData: CarData = {
+          ...formData,
+          price: Number(formData.price),
+          year: Number(formData.year),
+          mileage: Number(formData.mileage),
+          passengers: Number(formData.passengers),
+          images: imageUrls,
+          highlights: formData.highlights.split(',').map(s => s.trim()).filter(s => s !== ''),
+          features: formData.features.split(',').map(s => s.trim()).filter(s => s !== ''),
+          status: (editingId && allCars.find(c => c.id === editingId)?.status) || 'available',
+        };
+
+        if (editingId) {
+          await updateDoc(doc(db, 'cars', editingId), { ...carData, updatedAt: serverTimestamp() });
+          alert('Auto actualizado con éxito en Firestore');
+        } else {
+          await addDoc(collection(db, 'cars'), { ...carData, createdAt: serverTimestamp() });
+          alert('Auto publicado con éxito en Firestore');
+        }
       }
 
       cancelEditing();
