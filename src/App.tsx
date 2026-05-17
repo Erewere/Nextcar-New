@@ -59,7 +59,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { auth, db, storage, handleFirestoreError, OperationType } from './firebase';
 import { cn } from './lib/utils';
 
-const IMAGE_BASE_URL = (process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api') + '/uploads/autos/';
+const IMAGE_BASE_URL = (process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api') + '/uploads/autos/';
 
 // --- Error Boundary ---
 interface ErrorBoundaryProps {
@@ -756,7 +756,7 @@ const CarDetail = ({ allCars }: { allCars: CarData[] }) => {
 
   useEffect(() => {
     if (!id) return;
-    const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+    const rawBase = process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api/';
     const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
     
     // Support both string and number IDs (MySQL uses numbers, Firestore uses strings)
@@ -1305,7 +1305,7 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
   pageSettings: any,
   fetchCars: () => Promise<void>
 }) => {
-  const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const rawBase = process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api/';
   const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
@@ -2318,7 +2318,7 @@ const defaultSettings = {
 
 export default function App() {
   const [firestoreCars, setFirestoreCars] = useState<CarData[]>([]);
-  const rawBase = (import.meta as any).env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/hostinger-api/';
+  const rawBase = process.env.VITE_HOSTINGER_API_URL || 'https://nextcar.erewere.com/public/hostinger-api/';
   const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
   const fetchCars = async () => {
