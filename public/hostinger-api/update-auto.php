@@ -32,74 +32,83 @@ if (!is_writable(dirname($jsonPath))) {
     exit();
 }
 
+// Read existing autos.json
 $autos = [];
 if (file_exists($jsonPath)) {
     $content = file_get_contents($jsonPath);
     if ($content !== false) {
-        $autos = json_decode($content, true) ?: [];
+        $decoded = json_decode($content, true);
+        if (isset($decoded['data']) && is_array($decoded['data'])) {
+            $autos = $decoded['data'];
+        } elseif (is_array($decoded)) {
+            $autos = $decoded;
+        }
     }
 }
 
-$found = false;
-foreach ($autos as &$auto) {
-    if ($auto['id'] === $id) {
-        $found = true;
-
-        // Handle new image uploads
-        $newImageUrls = [];
-        if (!empty($_FILES['images'])) {
-            $files = $_FILES['images'];
-            $count = count($files['name']);
-            for ($i = 0; $i < $count; $i++) {
-                if ($files['error'][$i] === UPLOAD_ERR_OK) {
-                    $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
-                    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                    if (!in_array($ext, $allowed)) continue;
-                    $filename = $id . '_' . time() . '_' . $i . '.' . $ext;
-                    $dest = $uploadDir . $filename;
-                    if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
-                        $newImageUrls[] = '/uploads/autos/' . $filename;
-                    }
-                }
-            }
-        }
-
-        // Keep existing images the user wants to keep
-        $keepImages = [];
-        if (!empty($_POST['keep_images'])) {
-            $keepImages = is_array($_POST['keep_images']) ? $_POST['keep_images'] : [$_POST['keep_images']];
-        }
-        $allImages = array_merge($keepImages, $newImageUrls);
-
-        // Update fields
-        $fields = ['brand', 'model', 'bodyType', 'transmission', 'engineType', 'fuelConsumption', 'description', 'status'];
-        foreach ($fields as $field) {
-            if (isset($_POST[$field])) $auto[$field] = $_POST[$field];
-        }
-        $intFields = ['year', 'mileage', 'horsepower', 'passengers'];
-        foreach ($intFields as $field) {
-            if (isset($_POST[$field])) $auto[$field] = (int)$_POST[$field];
-        }
-        if (isset($_POST['price'])) $auto['price'] = (float)$_POST['price'];
-        if (isset($_POST['highlights'])) $auto['highlights'] = json_decode($_POST['highlights'], true) ?: [];
-        if (isset($_POST['features'])) $auto['features'] = json_decode($_POST['features'], true) ?: [];
-        $auto['images'] = $allImages;
-        $auto['updatedAt'] = date('c');
+$foundIndex = -1;
+foreach ($autos as $index => $auto) {
+    if (isset($auto['id']) && $auto['id'] === $id) {
+        $foundIndex = $index;
         break;
     }
 }
 
-if (!$found) {
-    echo json_encode(['success' => false, 'message' => 'Auto no encontrado: ' . $id]);
+if ($foundIndex === -1) {
+    echo json_encode(['success' => false, 'message' => 'Auto no encontrado con id: ' . $id]);
     exit();
 }
 
-$result = file_put_contents($jsonPath, json_encode($autos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$existingAuto = $autos[$foundIndex];
+$imageUrls = $existingAuto['images'] ?? [];
+
+if (!empty($_FILES['images'])) {
+    $files = $_FILES['images'];
+    $count = count($files['name']);
+    $newImages = [];
+    for ($i = 0; $i < $count; $i++) {
+        if ($files['error'][$i] === UPLOAD_ERR_OK) {
+            $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (!in_array($ext, $allowed)) continue;
+            $filename = $id . '_upd_' . $i . '_' . time() . '.' . $ext;
+            $dest = $uploadDir . $filename;
+            if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
+                $newImages[] = '/uploads/autos/' . $filename;
+            }
+        }
+    }
+    if (!empty($newImages)) {
+        $imageUrls = $newImages;
+    }
+}
+
+$autos[$foundIndex] = array_merge($existingAuto, [
+    'brand' => $_POST['brand'] ?? $existingAuto['brand'],
+    'model' => $_POST['model'] ?? $existingAuto['model'],
+    'year' => (int)($_POST['year'] ?? $existingAuto['year']),
+    'price' => (float)($_POST['price'] ?? $existingAuto['price']),
+    'mileage' => (int)($_POST['mileage'] ?? $existingAuto['mileage']),
+    'bodyType' => $_POST['bodyType'] ?? $existingAuto['bodyType'],
+    'transmission' => $_POST['transmission'] ?? $existingAuto['transmission'],
+    'engineType' => $_POST['engineType'] ?? $existingAuto['engineType'] ?? '',
+    'horsepower' => (int)($_POST['horsepower'] ?? $existingAuto['horsepower'] ?? 0),
+    'fuelConsumption' => $_POST['fuelConsumption'] ?? $existingAuto['fuelConsumption'] ?? '',
+    'passengers' => (int)($_POST['passengers'] ?? $existingAuto['passengers'] ?? 0),
+    'description' => $_POST['description'] ?? $existingAuto['description'],
+    'highlights' => json_decode($_POST['highlights'] ?? '[]', true) ?: ($existingAuto['highlights'] ?? []),
+    'features' => json_decode($_POST['features'] ?? '[]', true) ?: ($existingAuto['features'] ?? []),
+    'images' => $imageUrls,
+    'updatedAt' => date('c'),
+]);
+
+$saveData = ['success' => true, 'data' => array_values($autos)];
+$result = file_put_contents($jsonPath, json_encode($saveData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
-    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Writable: ' . (is_writable($jsonPath) ? 'si' : 'no')]);
+    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json']);
     exit();
 }
 
-echo json_encode(['success' => true, 'message' => 'Auto actualizado correctamente', 'id' => $id]);
+echo json_encode(['success' => true, 'message' => 'Auto actualizado correctamente', 'auto' => $autos[$foundIndex]]);
 ?>
