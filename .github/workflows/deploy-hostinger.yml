@@ -38,3 +38,18 @@ jobs:
           **/node_modules/**
             hostinger-api/uploads/**
             autos.json
+            
+        - name: 📂 Sync PHP API files
+          uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+          with:
+            server: ${{ secrets.FTP_HOST }}
+            username: ${{ secrets.FTP_USER }}
+            password: ${{ secrets.FTP_PASSWORD }}
+            local-dir: ./hostinger-api/
+            server-dir: ./hostinger-api/
+            exclude: |
+              **/.git*
+              **/.git*/**
+              **/node_modules/**
+              uploads/**
+              autos.json
