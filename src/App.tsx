@@ -2502,4 +2502,3 @@ export default function App() {
       </Router>
     </ErrorBoundary>
   );
-}
