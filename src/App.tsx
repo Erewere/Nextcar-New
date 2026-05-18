@@ -229,6 +229,22 @@ const ParallaxImage: React.FC<{ src: string; alt: string; className?: string }> 
   );
 };
 
+const WhatsAppFloatingButton = () => {
+  const whatsappUrl = "https://wa.me/524611000000?text=" + encodeURIComponent("Hola, vi un auto en Nextcar y me interesa más información");
+  return (
+    <a 
+      href={whatsappUrl} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="fixed bottom-6 right-6 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black hover:scale-110 transition-transform active:scale-95 flex items-center justify-center"
+      id="whatsapp-floating"
+      title="Contactar por WhatsApp"
+    >
+      <Smartphone size={32} />
+    </a>
+  );
+};
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -439,6 +455,13 @@ const Home = ({ cars, pageSettings }: { cars: CarData[], pageSettings: any }) =>
                   Cotizar mi Auto
                 </Link>
               </div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[#e11d48] font-black uppercase tracking-widest mt-8 animate-blink text-lg"
+              >
+                🔥 Últimas unidades disponibles esta semana
+              </motion.p>
             </motion.div>
           </motion.div>
         </div>
@@ -450,22 +473,22 @@ const Home = ({ cars, pageSettings }: { cars: CarData[], pageSettings: any }) =>
           <div className="flex items-start gap-4">
             <span className="text-4xl">🛡️</span>
             <div>
-              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">Garantía Legal.</h3>
+              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">✓ Blindaje Legal y Mecánico</h3>
               <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">Sin reportes de robo ni adeudos ocultos.</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
             <span className="text-4xl">⚙️</span>
             <div>
-              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">Inspección 120 Puntos.</h3>
-              <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">Diagnóstico mecánico exhaustivo.</p>
+              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">✓ Sin Fraudes Garantizado</h3>
+              <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">Tu inversión protegida por profesionales.</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
             <span className="text-4xl">🤝</span>
             <div>
-              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">Trato Directo Seguro.</h3>
-              <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">Conectamos particulares a precios justos.</p>
+              <h3 className="font-display font-black text-xl uppercase tracking-tighter mb-1">✓ +100 Autos Verificados</h3>
+              <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">Calidad certificada en cada unidad.</p>
             </div>
           </div>
         </div>
@@ -545,9 +568,19 @@ const Home = ({ cars, pageSettings }: { cars: CarData[], pageSettings: any }) =>
                     <p className="text-gray-400 line-through font-bold tracking-widest inline-block mr-3">$560,000</p>
                     <p className="text-4xl text-[#e11d48] font-display font-black tracking-tighter inline-block">$499,000</p>
                   </div>
-                  <Link to="/catalogo" className="block w-full text-center bg-black text-white font-display font-black uppercase py-4 border-4 border-black hover:bg-white hover:text-black transition-colors">
-                    Ver Detalles
-                  </Link>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Link to="/catalogo" className="block w-full text-center bg-black text-white font-display font-black uppercase py-4 border-4 border-black hover:bg-white hover:text-black transition-colors">
+                      Ver Detalles
+                    </Link>
+                    <a 
+                      href={`https://wa.me/524611000000?text=${encodeURIComponent('Hola, me interesa el Audi SQ5 2019 que vi en Nextcar, ¿está disponible?')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center bg-[#25D366] text-black font-display font-black uppercase py-4 border-4 border-black hover:bg-white transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Smartphone size={20} /> WhatsApp
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -571,9 +604,19 @@ const Home = ({ cars, pageSettings }: { cars: CarData[], pageSettings: any }) =>
                     <div className="mb-4">
                       <p className="text-4xl text-black font-display font-black tracking-tighter inline-block">${car.price.toLocaleString()}</p>
                     </div>
-                    <Link to={`/auto/${car.id}`} className="block w-full text-center bg-white text-black font-display font-black uppercase py-4 border-4 border-black hover:bg-black hover:text-white transition-colors">
-                      Ver Detalles
-                    </Link>
+                    <div className="grid grid-cols-1 gap-2">
+                      <Link to={`/auto/${car.id}`} className="block w-full text-center bg-white text-black font-display font-black uppercase py-4 border-4 border-black hover:bg-black hover:text-white transition-colors">
+                        Ver Detalles
+                      </Link>
+                      <a 
+                        href={`https://wa.me/524611000000?text=${encodeURIComponent(`Hola, me interesa el ${car.brand} ${car.model} ${car.year} que vi en Nextcar, ¿está disponible?`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full text-center bg-[#25D366] text-black font-display font-black uppercase py-4 border-4 border-black hover:bg-white transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Smartphone size={20} /> WhatsApp
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -722,13 +765,24 @@ const Catalog = ({ cars, loading }: { cars: CarData[], loading: boolean }) => {
                         Vendido
                       </div>
                     )}
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="text-2xl font-display font-black tracking-tight uppercase leading-none">{car.brand} <br/>{car.model}</h3>
                         <p className="text-gray-500 font-bold tracking-widest mt-2">{car.year} • {car.mileage.toLocaleString()} KM</p>
                       </div>
-                      <p className="text-2xl font-display font-black tracking-tighter">${car.price.toLocaleString()}</p>
+                      <div className="text-right">
+                        <p className="text-2xl font-display font-black tracking-tighter">${car.price.toLocaleString()}</p>
+                      </div>
                     </div>
+                    <a 
+                      href={`https://wa.me/524611000000?text=${encodeURIComponent(`Hola, me interesa el ${car.brand} ${car.model} ${car.year} que vi en Nextcar, ¿está disponible?`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="block w-full text-center bg-[#25D366] text-black font-display font-black uppercase py-3 border-2 border-black hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+                    >
+                      <Smartphone size={18} /> Contactar por WhatsApp
+                    </a>
                   </Link>
                 </FadeIn>
               ))}
@@ -2442,6 +2496,7 @@ export default function App() {
             </Routes>
           </main>
           <Footer />
+          <WhatsAppFloatingButton />
         </div>
       </Router>
     </ErrorBoundary>
