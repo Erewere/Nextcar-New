@@ -2353,8 +2353,9 @@ export default function App() {
   const apiBaseUrl = rawBase.endsWith('/') ? rawBase : rawBase + '/';
 
   const fetchCars = async () => {
-    // Data is already loaded via static import
+    // Fetch from Hostinger API if available       if (apiBaseUrl) {         try {           const res = await fetch(apiBaseUrl + 'get-autos.php', { cache: 'no-store' });           const json = await res.json();           if (json && json.data) { setFirestoreCars(json.data); }         } catch (e) { console.warn('get-autos.php fetch failed', e); }         setLoading(false);       } else {         //
     setLoading(false);
+          }
   };
   const [demoCars, setDemoCars] = useState<CarData[]>([]);
   const [loading, setLoading] = useState(true);
