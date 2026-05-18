@@ -3,5 +3,5 @@
 // Coloca aqui tu API Key de Google Gemini
 // Obtenla gratis en: https://aistudio.google.com/app/apikey
 
-$apiKey = 'TU_GEMINI_API_KEY_AQUI';
+$apiKey = 'AIzaSyCo10RoOEb3aohFSYsCviQC2xZ6pS2naFI';
 ?>
