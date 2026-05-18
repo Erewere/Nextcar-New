@@ -5,60 +5,72 @@ header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  http_response_code(200);
-  exit();
+    http_response_code(200);
+    exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'DELETE') {
-  http_response_code(405);
-  echo json_encode(['error' => 'Method not allowed']);
-  exit();
+    echo json_encode(['success' => false, 'message' => 'Metodo no permitido']);
+    exit();
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
-  $input = $_POST;
+    $input = $_POST;
 }
 
 $id = $input['id'] ?? null;
 if (!$id) {
-  http_response_code(400);
-  echo json_encode(['error' => 'Missing id']);
-  exit();
+    echo json_encode(['success' => false, 'message' => 'ID requerido']);
+    exit();
 }
 
-$dataFile = __DIR__ . '/../../autos.json';
+$jsonPath = __DIR__ . '/../autos.json';
+$uploadDir = __DIR__ . '/../uploads/autos/';
+
+if (!is_writable(dirname($jsonPath))) {
+    echo json_encode(['success' => false, 'message' => 'Sin permiso de escritura en: ' . dirname($jsonPath)]);
+    exit();
+}
+
 $autos = [];
-if (file_exists($dataFile)) {
-  $autos = json_decode(file_get_contents($dataFile), true) ?? [];
+if (file_exists($jsonPath)) {
+    $content = file_get_contents($jsonPath);
+    if ($content !== false) {
+        $autos = json_decode($content, true) ?: [];
+    }
 }
 
 $found = false;
 $newAutos = [];
 foreach ($autos as $auto) {
-  if ($auto['id'] === $id) {
-    $found = true;
-    // Delete images
-    if (!empty($auto['images'])) {
-      foreach ($auto['images'] as $imgUrl) {
-        $imgPath = __DIR__ . '/../../' . ltrim($imgUrl, '/');
-        if (file_exists($imgPath)) {
-          unlink($imgPath);
+    if ($auto['id'] === $id) {
+        $found = true;
+        // Delete associated images
+        if (!empty($auto['images'])) {
+            foreach ($auto['images'] as $imgUrl) {
+                $imgPath = __DIR__ . '/../' . ltrim($imgUrl, '/');
+                if (file_exists($imgPath)) {
+                    unlink($imgPath);
+                }
+            }
         }
-      }
+    } else {
+        $newAutos[] = $auto;
     }
-  } else {
-    $newAutos[] = $auto;
-  }
 }
 
 if (!$found) {
-  http_response_code(404);
-  echo json_encode(['error' => 'Auto not found']);
-  exit();
+    echo json_encode(['success' => false, 'message' => 'Auto no encontrado: ' . $id]);
+    exit();
 }
 
-file_put_contents($dataFile, json_encode($newAutos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$result = file_put_contents($jsonPath, json_encode($newAutos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-echo json_encode(['success' => true, 'message' => 'Auto deleted']);
+if ($result === false) {
+    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json']);
+    exit();
+}
+
+echo json_encode(['success' => true, 'message' => 'Auto eliminado correctamente', 'id' => $id]);
 ?>
