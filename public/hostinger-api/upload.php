@@ -14,13 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Paths - JSON stored in hostinger-api parent dir, images stored inside hostinger-api/uploads/autos/
+// Paths
 $jsonPath = __DIR__ . '/../autos.json';
 $uploadDir = __DIR__ . '/uploads/autos/';
 $uploadUrlBase = '/hostinger-api/uploads/autos/';
 $canUploadImages = false;
 
-// Try to create upload directory inside hostinger-api (where we have write access)
 if (!is_dir($uploadDir)) {
     @mkdir($uploadDir, 0755, true);
 }
@@ -40,20 +39,44 @@ if (file_exists($jsonPath)) {
     }
 }
 
-// Build new auto entry
+// Build new auto entry using English field names sent by frontend
 $newAuto = [
-    'id' => uniqid('auto_', true),
-    'marca' => $_POST['marca'] ?? '',
-    'modelo' => $_POST['modelo'] ?? '',
-    'anio' => $_POST['anio'] ?? '',
-    'precio' => $_POST['precio'] ?? '',
-    'kilometraje' => $_POST['kilometraje'] ?? '',
-    'descripcion' => $_POST['descripcion'] ?? '',
-    'imagenes' => [],
-    'fecha' => date('Y-m-d H:i:s')
+    'id'              => uniqid('auto_', true),
+    'brand'           => $_POST['brand'] ?? '',
+    'model'           => $_POST['model'] ?? '',
+    'year'            => $_POST['year'] ?? '',
+    'price'           => $_POST['price'] ?? '',
+    'mileage'         => $_POST['mileage'] ?? '',
+    'bodyType'        => $_POST['bodyType'] ?? '',
+    'transmission'    => $_POST['transmission'] ?? '',
+    'engineType'      => $_POST['engineType'] ?? '',
+    'horsepower'      => $_POST['horsepower'] ?? '',
+    'fuelConsumption' => $_POST['fuelConsumption'] ?? '',
+    'description'     => $_POST['description'] ?? '',
+    'highlights'      => $_POST['highlights'] ?? '',
+    'features'        => $_POST['features'] ?? '',
+    'passengers'      => $_POST['passengers'] ?? '',
+    'images'          => [],
+    'fecha'           => date('Y-m-d H:i:s')
 ];
 
 // Handle image uploads
+if ($canUploadImages && isset($_FILES['images']) && is_array($_FILES['images']['name'])) {
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    foreach ($_FILES['images']['name'] as $i => $name) {
+        if ($_FILES['images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+        $mime = mime_content_type($_FILES['images']['tmp_name'][$i]);
+        if (!in_array($mime, $allowedTypes)) continue;
+        $ext = pathinfo($name, PATHINFO_EXTENSION);
+        $filename = uniqid('img_', true) . '.' . $ext;
+        $dest = $uploadDir . $filename;
+        if (move_uploaded_file($_FILES['images']['tmp_name'][$i], $dest)) {
+            $newAuto['images'][] = $uploadUrlBase . $filename;
+        }
+    }
+}
+
+// Also handle imagenes[] (legacy field name)
 if ($canUploadImages && isset($_FILES['imagenes']) && is_array($_FILES['imagenes']['name'])) {
     $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     foreach ($_FILES['imagenes']['name'] as $i => $name) {
@@ -64,23 +87,17 @@ if ($canUploadImages && isset($_FILES['imagenes']) && is_array($_FILES['imagenes
         $filename = uniqid('img_', true) . '.' . $ext;
         $dest = $uploadDir . $filename;
         if (move_uploaded_file($_FILES['imagenes']['tmp_name'][$i], $dest)) {
-            $newAuto['imagenes'][] = $uploadUrlBase . $filename;
+            $newAuto['images'][] = $uploadUrlBase . $filename;
         }
     }
 }
 
-// Save to autos.json
+// Append new auto and save
 $autos[] = $newAuto;
-$result = file_put_contents($jsonPath, json_encode(['success' => true, 'data' => $autos], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$result = file_put_contents($jsonPath, json_encode(['data' => $autos], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
-    echo json_encode(['success' => false, 'message' => 'Error al guardar autos.json']);
+    echo json_encode(['success' => false, 'message' => 'Error al guardar en autos.json']);
 } else {
-    echo json_encode([
-        'success' => true,
-        'message' => 'Auto publicado correctamente',
-        'auto' => $newAuto,
-        'canUploadImages' => $canUploadImages
-    ]);
+    echo json_encode(['success' => true, 'message' => 'Auto publicado con exito', 'auto' => $newAuto]);
 }
-?>
