@@ -26,17 +26,18 @@ if (!is_dir($uploadDir)) {
     }
 }
 
-// Check write permissions
-if (!is_writable(dirname($jsonPath))) {
-    echo json_encode(['success' => false, 'message' => 'Sin permiso de escritura en: ' . dirname($jsonPath)]);
-    exit();
-}
-
+// Read existing autos.json
 $autos = [];
 if (file_exists($jsonPath)) {
     $content = file_get_contents($jsonPath);
     if ($content !== false) {
-        $autos = json_decode($content, true) ?: [];
+        $decoded = json_decode($content, true);
+        // Handle both formats: plain array OR {success:true, data:[...]}
+        if (isset($decoded['data']) && is_array($decoded['data'])) {
+            $autos = $decoded['data'];
+        } elseif (is_array($decoded)) {
+            $autos = $decoded;
+        }
     }
 }
 
@@ -55,9 +56,6 @@ if (!empty($_FILES['images'])) {
             $dest = $uploadDir . $filename;
             if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
                 $imageUrls[] = '/uploads/autos/' . $filename;
-            } else {
-                // Try to get more info
-                $imageUrls[] = 'ERROR_MOVING:' . $dest;
             }
         }
     }
@@ -86,12 +84,14 @@ $newAuto = [
 
 $autos[] = $newAuto;
 
-$result = file_put_contents($jsonPath, json_encode($autos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+// Save back in {success:true, data:[...]} format
+$saveData = ['success' => true, 'data' => $autos];
+$result = file_put_contents($jsonPath, json_encode($saveData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
-    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Path: ' . $jsonPath . ' Writable: ' . (is_writable($jsonPath) ? 'si' : 'no')]);
+    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Path: ' . $jsonPath . ' Writable: ' . (is_writable(dirname($jsonPath)) ? 'si' : 'no')]);
     exit();
 }
 
-echo json_encode(['success' => true, 'message' => 'Auto subido correctamente', 'id' => $id, 'images' => $imageUrls]);
+echo json_encode(['success' => true, 'message' => 'Auto guardado correctamente', 'auto' => $newAuto]);
 ?>
