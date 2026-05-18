@@ -14,12 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Paths relative to this file location (public_html/hostinger-api/)
+// Paths - JSON stored in hostinger-api parent dir, images stored inside hostinger-api/uploads/autos/
 $jsonPath = __DIR__ . '/../autos.json';
-$uploadDir = __DIR__ . '/../uploads/autos/';
+$uploadDir = __DIR__ . '/uploads/autos/';
+$uploadUrlBase = '/hostinger-api/uploads/autos/';
 $canUploadImages = false;
 
-// Try to ensure upload directory exists (non-fatal if fails)
+// Try to create upload directory inside hostinger-api (where we have write access)
 if (!is_dir($uploadDir)) {
     @mkdir($uploadDir, 0755, true);
 }
@@ -31,7 +32,6 @@ if (file_exists($jsonPath)) {
     $content = file_get_contents($jsonPath);
     if ($content !== false) {
         $decoded = json_decode($content, true);
-        // Handle both formats: plain array OR {success:true, data:[...]}
         if (isset($decoded['data']) && is_array($decoded['data'])) {
             $autos = $decoded['data'];
         } elseif (is_array($decoded)) {
@@ -40,56 +40,47 @@ if (file_exists($jsonPath)) {
     }
 }
 
-$id = uniqid('auto_', true);
-$imageUrls = [];
-if ($canUploadImages && !empty($_FILES['images'])) {
-    $files = $_FILES['images'];
-    $count = count($files['name']);
-    for ($i = 0; $i < $count; $i++) {
-        if ($files['error'][$i] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-            if (!in_array($ext, $allowed)) continue;
-            $filename = $id . '_' . $i . '.' . $ext;
-            $dest = $uploadDir . $filename;
-            if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
-                $imageUrls[] = '/uploads/autos/' . $filename;
-            }
+// Build new auto entry
+$newAuto = [
+    'id' => uniqid('auto_', true),
+    'marca' => $_POST['marca'] ?? '',
+    'modelo' => $_POST['modelo'] ?? '',
+    'anio' => $_POST['anio'] ?? '',
+    'precio' => $_POST['precio'] ?? '',
+    'kilometraje' => $_POST['kilometraje'] ?? '',
+    'descripcion' => $_POST['descripcion'] ?? '',
+    'imagenes' => [],
+    'fecha' => date('Y-m-d H:i:s')
+];
+
+// Handle image uploads
+if ($canUploadImages && isset($_FILES['imagenes']) && is_array($_FILES['imagenes']['name'])) {
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    foreach ($_FILES['imagenes']['name'] as $i => $name) {
+        if ($_FILES['imagenes']['error'][$i] !== UPLOAD_ERR_OK) continue;
+        $mime = mime_content_type($_FILES['imagenes']['tmp_name'][$i]);
+        if (!in_array($mime, $allowedTypes)) continue;
+        $ext = pathinfo($name, PATHINFO_EXTENSION);
+        $filename = uniqid('img_', true) . '.' . $ext;
+        $dest = $uploadDir . $filename;
+        if (move_uploaded_file($_FILES['imagenes']['tmp_name'][$i], $dest)) {
+            $newAuto['imagenes'][] = $uploadUrlBase . $filename;
         }
     }
 }
 
-$newAuto = [
-    'id' => $id,
-    'brand' => $_POST['brand'] ?? '',
-    'model' => $_POST['model'] ?? '',
-    'year' => (int)($_POST['year'] ?? 0),
-    'price' => (float)($_POST['price'] ?? 0),
-    'mileage' => (int)($_POST['mileage'] ?? 0),
-    'bodyType' => $_POST['bodyType'] ?? '',
-    'transmission' => $_POST['transmission'] ?? '',
-    'engineType' => $_POST['engineType'] ?? '',
-    'horsepower' => (int)($_POST['horsepower'] ?? 0),
-    'fuelConsumption' => $_POST['fuelConsumption'] ?? '',
-    'passengers' => (int)($_POST['passengers'] ?? 0),
-    'description' => $_POST['description'] ?? '',
-    'highlights' => json_decode($_POST['highlights'] ?? '[]', true) ?: [],
-    'features' => json_decode($_POST['features'] ?? '[]', true) ?: [],
-    'images' => $imageUrls,
-    'status' => 'available',
-    'createdAt' => date('c'),
-];
-
+// Save to autos.json
 $autos[] = $newAuto;
-
-// Save back in {success:true, data:[...]} format
-$saveData = ['success' => true, 'data' => $autos];
-$result = file_put_contents($jsonPath, json_encode($saveData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$result = file_put_contents($jsonPath, json_encode(['success' => true, 'data' => $autos], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
-    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Writable: ' . (is_writable(dirname($jsonPath)) ? 'si' : 'no')]);
-    exit();
+    echo json_encode(['success' => false, 'message' => 'Error al guardar autos.json']);
+} else {
+    echo json_encode([
+        'success' => true,
+        'message' => 'Auto publicado correctamente',
+        'auto' => $newAuto,
+        'canUploadImages' => $canUploadImages
+    ]);
 }
-
-echo json_encode(['success' => true, 'message' => 'Auto guardado correctamente', 'auto' => $newAuto, 'imagesUploaded' => count($imageUrls), 'imageUploadAvailable' => $canUploadImages]);
 ?>
