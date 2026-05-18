@@ -21,7 +21,8 @@ if (!$id) {
 }
 
 $jsonPath = __DIR__ . '/../autos.json';
-$uploadDir = __DIR__ . '/../uploads/autos/';
+$uploadDir = __DIR__ . '/uploads/autos/';
+$uploadUrlBase = '/hostinger-api/uploads/autos/';
 
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
@@ -60,46 +61,100 @@ if ($foundIndex === -1) {
 }
 
 $existingAuto = $autos[$foundIndex];
-$imageUrls = $existingAuto['images'] ?? [];
 
+// Handle images: start with keep_images[] sent from frontend, then add newly uploaded
+$imageUrls = [];
+
+// 1. Keep existing images selected by frontend
+if (isset($_POST['keep_images']) && is_array($_POST['keep_images'])) {
+    $imageUrls = array_values($_POST['keep_images']);
+} elseif (!empty($_POST['keep_images[]'])) {
+    $imageUrls = is_array($_POST['keep_images[]']) ? array_values($_POST['keep_images[]']) : [$_POST['keep_images[]']];
+} else {
+    // If no keep_images sent at all, preserve existing images from JSON
+    $imageUrls = $existingAuto['images'] ?? [];
+}
+
+// 2. Upload new images and append
 if (!empty($_FILES['images'])) {
     $files = $_FILES['images'];
     $count = count($files['name']);
-    $newImages = [];
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     for ($i = 0; $i < $count; $i++) {
-        if ($files['error'][$i] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-            if (!in_array($ext, $allowed)) continue;
-            $filename = $id . '_upd_' . $i . '_' . time() . '.' . $ext;
-            $dest = $uploadDir . $filename;
-            if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
-                $newImages[] = '/uploads/autos/' . $filename;
-            }
+        if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
+        $mime = mime_content_type($files['tmp_name'][$i]);
+        if (!in_array($mime, $allowedTypes)) continue;
+        $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+        $filename = $id . '_upd_' . $i . '_' . time() . '.' . $ext;
+        $dest = $uploadDir . $filename;
+        if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
+            $imageUrls[] = $uploadUrlBase . $filename;
         }
-    }
-    if (!empty($newImages)) {
-        $imageUrls = $newImages;
     }
 }
 
+// Also handle images[] field name variant
+if (!empty($_FILES['images[]'])) {
+    $files = $_FILES['images[]'];
+    $count = count($files['name']);
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    for ($i = 0; $i < $count; $i++) {
+        if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
+        $mime = mime_content_type($files['tmp_name'][$i]);
+        if (!in_array($mime, $allowedTypes)) continue;
+        $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+        $filename = $id . '_upd_' . $i . '_' . time() . '.' . $ext;
+        $dest = $uploadDir . $filename;
+        if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
+            $imageUrls[] = $uploadUrlBase . $filename;
+        }
+    }
+}
+
+// Parse highlights and features - support both JSON array and comma-separated string
+$highlightsRaw = $_POST['highlights'] ?? null;
+$featuresRaw = $_POST['features'] ?? null;
+
+if ($highlightsRaw !== null) {
+    if (is_string($highlightsRaw)) {
+        $decoded_h = json_decode($highlightsRaw, true);
+        $highlights = is_array($decoded_h) ? $decoded_h : array_values(array_filter(array_map('trim', explode(',', $highlightsRaw))));
+    } else {
+        $highlights = $existingAuto['highlights'] ?? [];
+    }
+} else {
+    $highlights = $existingAuto['highlights'] ?? [];
+}
+
+if ($featuresRaw !== null) {
+    if (is_string($featuresRaw)) {
+        $decoded_f = json_decode($featuresRaw, true);
+        $features = is_array($decoded_f) ? $decoded_f : array_values(array_filter(array_map('trim', explode(',', $featuresRaw))));
+    } else {
+        $features = $existingAuto['features'] ?? [];
+    }
+} else {
+    $features = $existingAuto['features'] ?? [];
+}
+
 $autos[$foundIndex] = array_merge($existingAuto, [
-    'brand' => $_POST['brand'] ?? $existingAuto['brand'],
-    'model' => $_POST['model'] ?? $existingAuto['model'],
-    'year' => (int)($_POST['year'] ?? $existingAuto['year']),
-    'price' => (float)($_POST['price'] ?? $existingAuto['price']),
-    'mileage' => (int)($_POST['mileage'] ?? $existingAuto['mileage']),
-    'bodyType' => $_POST['bodyType'] ?? $existingAuto['bodyType'],
-    'transmission' => $_POST['transmission'] ?? $existingAuto['transmission'],
-    'engineType' => $_POST['engineType'] ?? $existingAuto['engineType'] ?? '',
-    'horsepower' => (int)($_POST['horsepower'] ?? $existingAuto['horsepower'] ?? 0),
+    'brand'           => $_POST['brand'] ?? $existingAuto['brand'],
+    'model'           => $_POST['model'] ?? $existingAuto['model'],
+    'year'            => (int)($_POST['year'] ?? $existingAuto['year']),
+    'price'           => (float)($_POST['price'] ?? $existingAuto['price']),
+    'mileage'         => (int)($_POST['mileage'] ?? $existingAuto['mileage']),
+    'bodyType'        => $_POST['bodyType'] ?? $existingAuto['bodyType'],
+    'transmission'    => $_POST['transmission'] ?? $existingAuto['transmission'],
+    'engineType'      => $_POST['engineType'] ?? $existingAuto['engineType'] ?? '',
+    'horsepower'      => $_POST['horsepower'] ?? $existingAuto['horsepower'] ?? '',
     'fuelConsumption' => $_POST['fuelConsumption'] ?? $existingAuto['fuelConsumption'] ?? '',
-    'passengers' => (int)($_POST['passengers'] ?? $existingAuto['passengers'] ?? 0),
-    'description' => $_POST['description'] ?? $existingAuto['description'],
-    'highlights' => json_decode($_POST['highlights'] ?? '[]', true) ?: ($existingAuto['highlights'] ?? []),
-    'features' => json_decode($_POST['features'] ?? '[]', true) ?: ($existingAuto['features'] ?? []),
-    'images' => $imageUrls,
-    'updatedAt' => date('c'),
+    'passengers'      => (int)($_POST['passengers'] ?? $existingAuto['passengers'] ?? 0),
+    'description'     => $_POST['description'] ?? $existingAuto['description'],
+    'highlights'      => $highlights,
+    'features'        => $features,
+    'status'          => $_POST['status'] ?? $existingAuto['status'] ?? 'available',
+    'images'          => array_values($imageUrls),
+    'updatedAt'       => date('c'),
 ]);
 
 $saveData = ['success' => true, 'data' => array_values($autos)];
