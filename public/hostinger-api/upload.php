@@ -17,14 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Paths relative to this file location (public_html/hostinger-api/)
 $jsonPath = __DIR__ . '/../autos.json';
 $uploadDir = __DIR__ . '/../uploads/autos/';
+$canUploadImages = false;
 
-// Ensure upload directory exists
+// Try to ensure upload directory exists (non-fatal if fails)
 if (!is_dir($uploadDir)) {
-    if (!mkdir($uploadDir, 0755, true)) {
-        echo json_encode(['success' => false, 'message' => 'No se pudo crear directorio de uploads: ' . $uploadDir]);
-        exit();
-    }
+    @mkdir($uploadDir, 0755, true);
 }
+$canUploadImages = is_dir($uploadDir) && is_writable($uploadDir);
 
 // Read existing autos.json
 $autos = [];
@@ -43,8 +42,7 @@ if (file_exists($jsonPath)) {
 
 $id = uniqid('auto_', true);
 $imageUrls = [];
-
-if (!empty($_FILES['images'])) {
+if ($canUploadImages && !empty($_FILES['images'])) {
     $files = $_FILES['images'];
     $count = count($files['name']);
     for ($i = 0; $i < $count; $i++) {
@@ -89,9 +87,9 @@ $saveData = ['success' => true, 'data' => $autos];
 $result = file_put_contents($jsonPath, json_encode($saveData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
-    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Path: ' . $jsonPath . ' Writable: ' . (is_writable(dirname($jsonPath)) ? 'si' : 'no')]);
+    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Writable: ' . (is_writable(dirname($jsonPath)) ? 'si' : 'no')]);
     exit();
 }
 
-echo json_encode(['success' => true, 'message' => 'Auto guardado correctamente', 'auto' => $newAuto]);
+echo json_encode(['success' => true, 'message' => 'Auto guardado correctamente', 'auto' => $newAuto, 'imagesUploaded' => count($imageUrls), 'imageUploadAvailable' => $canUploadImages]);
 ?>
