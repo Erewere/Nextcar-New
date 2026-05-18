@@ -14,17 +14,30 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+// Paths relative to this file location (public_html/hostinger-api/)
 $jsonPath = __DIR__ . '/../autos.json';
 $uploadDir = __DIR__ . '/../uploads/autos/';
 
+// Ensure upload directory exists
 if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0755, true);
+    if (!mkdir($uploadDir, 0755, true)) {
+        echo json_encode(['success' => false, 'message' => 'No se pudo crear directorio de uploads: ' . $uploadDir]);
+        exit();
+    }
+}
+
+// Check write permissions
+if (!is_writable(dirname($jsonPath))) {
+    echo json_encode(['success' => false, 'message' => 'Sin permiso de escritura en: ' . dirname($jsonPath)]);
+    exit();
 }
 
 $autos = [];
 if (file_exists($jsonPath)) {
     $content = file_get_contents($jsonPath);
-    $autos = json_decode($content, true) ?: [];
+    if ($content !== false) {
+        $autos = json_decode($content, true) ?: [];
+    }
 }
 
 $id = uniqid('auto_', true);
@@ -35,11 +48,16 @@ if (!empty($_FILES['images'])) {
     $count = count($files['name']);
     for ($i = 0; $i < $count; $i++) {
         if ($files['error'][$i] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($files['name'][$i], PATHINFO_EXTENSION);
+            $ext = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (!in_array($ext, $allowed)) continue;
             $filename = $id . '_' . $i . '.' . $ext;
             $dest = $uploadDir . $filename;
             if (move_uploaded_file($files['tmp_name'][$i], $dest)) {
                 $imageUrls[] = '/uploads/autos/' . $filename;
+            } else {
+                // Try to get more info
+                $imageUrls[] = 'ERROR_MOVING:' . $dest;
             }
         }
     }
@@ -62,11 +80,18 @@ $newAuto = [
     'highlights' => json_decode($_POST['highlights'] ?? '[]', true) ?: [],
     'features' => json_decode($_POST['features'] ?? '[]', true) ?: [],
     'images' => $imageUrls,
+    'status' => 'available',
     'createdAt' => date('c'),
 ];
 
 $autos[] = $newAuto;
-file_put_contents($jsonPath, json_encode($autos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-echo json_encode(['success' => true, 'message' => 'Auto subido correctamente', 'id' => $id]);
+$result = file_put_contents($jsonPath, json_encode($autos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+if ($result === false) {
+    echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json. Path: ' . $jsonPath . ' Writable: ' . (is_writable($jsonPath) ? 'si' : 'no')]);
+    exit();
+}
+
+echo json_encode(['success' => true, 'message' => 'Auto subido correctamente', 'id' => $id, 'images' => $imageUrls]);
 ?>
