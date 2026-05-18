@@ -103,5 +103,5 @@ if (isset($aiData['features']) && is_array($aiData['features'])) {
     $aiData['features'] = implode(', ', $aiData['features']);
 }
 
-echo json_encode(['success' => true, 'data' => $aiData]);
+echo json_encode(array_merge(['success' => true], $aiData));
 ?>
