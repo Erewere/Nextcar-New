@@ -33,39 +33,49 @@ if (!is_writable(dirname($jsonPath))) {
     exit();
 }
 
+// Read existing autos.json
 $autos = [];
 if (file_exists($jsonPath)) {
     $content = file_get_contents($jsonPath);
     if ($content !== false) {
-        $autos = json_decode($content, true) ?: [];
-    }
-}
-
-$found = false;
-$newAutos = [];
-foreach ($autos as $auto) {
-    if ($auto['id'] === $id) {
-        $found = true;
-        // Delete associated images
-        if (!empty($auto['images'])) {
-            foreach ($auto['images'] as $imgUrl) {
-                $imgPath = __DIR__ . '/../' . ltrim($imgUrl, '/');
-                if (file_exists($imgPath)) {
-                    unlink($imgPath);
-                }
-            }
+        $decoded = json_decode($content, true);
+        if (isset($decoded['data']) && is_array($decoded['data'])) {
+            $autos = $decoded['data'];
+        } elseif (is_array($decoded)) {
+            $autos = $decoded;
         }
-    } else {
-        $newAutos[] = $auto;
     }
 }
 
-if (!$found) {
-    echo json_encode(['success' => false, 'message' => 'Auto no encontrado: ' . $id]);
+$foundIndex = -1;
+foreach ($autos as $index => $auto) {
+    if (isset($auto['id']) && $auto['id'] === $id) {
+        $foundIndex = $index;
+        break;
+    }
+}
+
+if ($foundIndex === -1) {
+    echo json_encode(['success' => false, 'message' => 'Auto no encontrado con id: ' . $id]);
     exit();
 }
 
-$result = file_put_contents($jsonPath, json_encode($newAutos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+// Delete associated images
+$deletedAuto = $autos[$foundIndex];
+if (!empty($deletedAuto['images'])) {
+    foreach ($deletedAuto['images'] as $imgUrl) {
+        $filename = basename($imgUrl);
+        $imgPath = $uploadDir . $filename;
+        if (file_exists($imgPath)) {
+            unlink($imgPath);
+        }
+    }
+}
+
+array_splice($autos, $foundIndex, 1);
+
+$saveData = ['success' => true, 'data' => array_values($autos)];
+$result = file_put_contents($jsonPath, json_encode($saveData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
     echo json_encode(['success' => false, 'message' => 'Error al escribir autos.json']);
