@@ -36,6 +36,5 @@ jobs:
           **/.git*
           **/.git*/**
           **/node_modules/**
-          hostinger-api/**
-            uploads/**
+        hostinger-api/uploads/**
             autos.json
