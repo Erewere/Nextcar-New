@@ -39,23 +39,42 @@ if (file_exists($jsonPath)) {
     }
 }
 
+// Parse highlights and features - support both JSON array and comma-separated string
+$highlightsRaw = $_POST['highlights'] ?? '';
+$featuresRaw = $_POST['features'] ?? '';
+
+if (is_string($highlightsRaw)) {
+    $decoded_h = json_decode($highlightsRaw, true);
+    $highlights = is_array($decoded_h) ? $decoded_h : array_values(array_filter(array_map('trim', explode(',', $highlightsRaw))));
+} else {
+    $highlights = [];
+}
+
+if (is_string($featuresRaw)) {
+    $decoded_f = json_decode($featuresRaw, true);
+    $features = is_array($decoded_f) ? $decoded_f : array_values(array_filter(array_map('trim', explode(',', $featuresRaw))));
+} else {
+    $features = [];
+}
+
 // Build new auto entry using English field names sent by frontend
 $newAuto = [
     'id'              => uniqid('auto_', true),
     'brand'           => $_POST['brand'] ?? '',
     'model'           => $_POST['model'] ?? '',
-    'year'            => $_POST['year'] ?? '',
-    'price'           => $_POST['price'] ?? '',
-    'mileage'         => $_POST['mileage'] ?? '',
+    'year'            => (int)($_POST['year'] ?? 0),
+    'price'           => (float)($_POST['price'] ?? 0),
+    'mileage'         => (int)($_POST['mileage'] ?? 0),
     'bodyType'        => $_POST['bodyType'] ?? '',
     'transmission'    => $_POST['transmission'] ?? '',
     'engineType'      => $_POST['engineType'] ?? '',
     'horsepower'      => $_POST['horsepower'] ?? '',
     'fuelConsumption' => $_POST['fuelConsumption'] ?? '',
     'description'     => $_POST['description'] ?? '',
-    'highlights'      => $_POST['highlights'] ?? '',
-    'features'        => $_POST['features'] ?? '',
-    'passengers'      => $_POST['passengers'] ?? '',
+    'highlights'      => $highlights,
+    'features'        => $features,
+    'passengers'      => (int)($_POST['passengers'] ?? 0),
+    'status'          => 'available',
     'images'          => [],
     'fecha'           => date('Y-m-d H:i:s')
 ];
@@ -94,7 +113,7 @@ if ($canUploadImages && isset($_FILES['imagenes']) && is_array($_FILES['imagenes
 
 // Append new auto and save
 $autos[] = $newAuto;
-$result = file_put_contents($jsonPath, json_encode(['data' => $autos], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+$result = file_put_contents($jsonPath, json_encode(['success' => true, 'data' => $autos], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 if ($result === false) {
     echo json_encode(['success' => false, 'message' => 'Error al guardar en autos.json']);
