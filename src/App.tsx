@@ -1380,7 +1380,7 @@ const Admin = ({ onCarAdded, onCarUpdated, onCarDeleted, allCars, pageSettings, 
     }
     setAiLoading(true);
     try {
-      const resp = await fetch('/api/gemini', {
+      const resp = await fetch(`${apiBaseUrl}ai-complete.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
