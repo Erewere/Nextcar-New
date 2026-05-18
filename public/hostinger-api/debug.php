@@ -3,7 +3,7 @@ header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
 
 $jsonPath = __DIR__ . '/../autos.json';
-$uploadDir = __DIR__ . '/../uploads/autos/';
+$uploadDir = __DIR__ . '/uploads/autos/';
 
 $info = [
     '__DIR__' => __DIR__,
