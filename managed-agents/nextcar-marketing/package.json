@@ -1,0 +1,14 @@
+{
+  "name": "nextcar-marketing-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "session": "tsx session.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}
