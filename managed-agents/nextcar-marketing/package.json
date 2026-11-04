@@ -6,7 +6,8 @@
     "session": "tsx session.ts",
     "ejecutar-ahora": "tsx ejecutar-ahora.ts",
     "borradores": "tsx fetch-borradores.ts",
-    "diagnostico": "tsx diagnostico.ts"
+    "diagnostico": "tsx diagnostico.ts",
+    "pausar": "tsx pausar.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest"
