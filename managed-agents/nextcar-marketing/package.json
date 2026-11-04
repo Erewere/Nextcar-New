@@ -5,7 +5,8 @@
   "scripts": {
     "session": "tsx session.ts",
     "ejecutar-ahora": "tsx ejecutar-ahora.ts",
-    "borradores": "tsx fetch-borradores.ts"
+    "borradores": "tsx fetch-borradores.ts",
+    "diagnostico": "tsx diagnostico.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest"
