@@ -65,6 +65,7 @@ for await (const event of stream) {
   } else if (event.type === "session.status_idle") {
     // requires_action = espera tu respuesta a una aprobación; cualquier otro motivo = turno terminado.
     if (event.stop_reason.type === "requires_action") continue;
+    console.log(`\n[turno terminado: ${event.stop_reason.type}]`);
 
     const next = !probed && PROMPT ? PROMPT : (await rl.question("\n\nTú (vacío para salir): ")).trim();
     probed = true;
@@ -73,6 +74,9 @@ for await (const event of stream) {
   } else if (event.type === "session.status_terminated") {
     console.log("\n--- Sesión terminada ---");
     break;
+  } else if (event.type.includes("error") || process.env.DEBUG) {
+    // Errores (por ejemplo, el CRM rechaza el token) y, con DEBUG=1, todos los demás eventos.
+    console.error(`\n[${event.type}] ${JSON.stringify(event).slice(0, 600)}`);
   }
 }
 rl.close();
