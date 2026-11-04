@@ -125,6 +125,28 @@ Para pausarla: `client.beta.deployments.pause(id)`. Para cambiar el horario, edi
 
 Nota: si el agente intentara escribir en el CRM, la llamada queda esperando aprobación y la corrida no termina. El mensaje de arranque le dice que no escriba nada.
 
+## Reporte semanal a propietarios (`deployment-propietarios-semanal.md`)
+
+Cada lunes a las 7:10 (hora de Ciudad de México) deja `propietarios-AAAA-MM-DD.md`: por cada persona que vende su auto con Nextcar, un borrador con los contactos de la semana y, a partir de las 2 semanas sin venderse, una revisión de precio (con un bloque solo para Luis). Solo borradores. Tope de 2 dólares por corrida.
+
+```bash
+ant apply --dry-run -v agent.md deployment-propietarios-semanal.md
+```
+```bash
+ant apply agent.md deployment-propietarios-semanal.md
+```
+```bash
+export DEPLOYMENT_ID=$(jq -r '.resources["./deployment-propietarios-semanal.md"].id' claude-lock.json)
+```
+```bash
+npm run ejecutar-ahora
+```
+```bash
+npm run borradores
+```
+
+`DEPLOYMENT_ID` decide cuál tarea se prueba y se baja: usa el `jq` de `deployment-leads-diarios.md` para volver a la revisión diaria.
+
 ## Fase 2 (pendiente)
 
 - Generar video e imagen: faltan las URLs MCP de ElevenLabs y Canva.
