@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "session": "tsx session.ts"
+    "session": "tsx session.ts",
+    "ejecutar-ahora": "tsx ejecutar-ahora.ts",
+    "borradores": "tsx fetch-borradores.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest"

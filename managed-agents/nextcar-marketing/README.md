@@ -88,9 +88,45 @@ El script hace primero una prueba de conexión al CRM (`pendientes_de_hoy`). Des
 
 Los borradores se descargan a `borradores/` (ignorada por git, tiene datos de clientes). Cualquier llamada que modifique el CRM te pide aprobación en la terminal.
 
+## Revisión diaria de leads (`deployment-leads-diarios.md`)
+
+Cada día, de lunes a sábado a las 6:40 (hora de Ciudad de México), el agente revisa el CRM y deja un archivo `seguimientos-AAAA-MM-DD.md` con los seguimientos pendientes (máximo 10 por corrida). Solo borradores: no envía nada y no modifica el CRM. Tope de 3 dólares por corrida.
+
+Crear la tarea programada:
+
+```bash
+grep -c vlt_011Cghy7q1SX3LExkTjuMRNw claude-lock.json
+```
+Debe imprimir `1`. Si imprime `0`, el ID de la bóveda del archivo no coincide con el tuyo: cámbialo en `deployment-leads-diarios.md`.
+
+```bash
+ant apply --dry-run -v deployment-leads-diarios.md
+```
+```bash
+ant apply deployment-leads-diarios.md
+```
+
+Probarla ahora, sin esperar al horario:
+
+```bash
+export DEPLOYMENT_ID=$(jq -r '.resources["./deployment-leads-diarios.md"].id' claude-lock.json)
+```
+```bash
+npm run ejecutar-ahora
+```
+
+Cuando termine (unos minutos), bajar el resultado a `borradores/`:
+
+```bash
+npm run borradores
+```
+
+Para pausarla: `client.beta.deployments.pause(id)`. Para cambiar el horario, edita `schedule.expression` y corre `ant apply deployment-leads-diarios.md`.
+
+Nota: si el agente intentara escribir en el CRM, la llamada queda esperando aprobación y la corrida no termina. El mensaje de arranque le dice que no escriba nada.
+
 ## Fase 2 (pendiente)
 
 - Generar video e imagen: faltan las URLs MCP de ElevenLabs y Canva.
 - Publicar: decidir Postiz o Meta directo.
 - Enviar mensajes: WhatsApp Cloud API y Messenger/Instagram, con plantillas aprobadas para los seguimientos.
-- Tarea programada para la revisión diaria de leads sin respuesta.
